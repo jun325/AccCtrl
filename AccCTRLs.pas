@@ -1382,7 +1382,6 @@ procedure TColorButton.MouseDown(Button: TMouseButton; Shift: TShiftState;
   X,Y: Integer);
 begin
   if Button=mbLeft then begin
-    SetFocus;
     SetBevel(True);
     FMouseDownNow := True;
     Repaint;
