@@ -4,7 +4,7 @@ interface
 
 uses
   Windows, Messages, Graphics, Dialogs, Types, UITypes, SysUtils, Classes, Controls, ActiveX, StdCtrls, ComObj, Variants,
-  oleacc, comctrls, commctrl, ActnList, Menus, Forms, CheckLst, Buttons, ExtCtrls, mask, multimon, math;
+  WinAPI.oleacc, comctrls, commctrl, ActnList, Menus, Forms, CheckLst, Buttons, ExtCtrls, mask, multimon, math;
 
 type
   
@@ -1156,6 +1156,7 @@ type
     function RGBtoHex(Color: TColor; ResIsRGB: Boolean = True): String;
     procedure SetPickColor(Value:TColor);
     function GetConvColor(Color: TColor; BlendPer: Single; BlendColor: Boolean): TColor;
+    procedure AppDeactivate(Sender: TObject);
   public
     { Public}
     property PickColor:TColor read FPickColor write SetPickColor;
@@ -1902,10 +1903,19 @@ end;
 
 function TAccClrBtn.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    VariantInit(pvarChild);
-    TVarData(pvarChild).VType := VT_DISPATCH;
-    pvarChild := self as iDispatch;
     result := S_OK;
+  VariantInit(pvarChild);
+  if self.Focused then
+  begin
+    TVarData(pvarChild).VType := VT_I4;
+    TVarData(pvarChild).VInteger := CHILDID_SELF;
+  end
+  else
+  begin
+
+    TVarData(pvarChild).VType := VT_EMPTY;
+
+  end;
 end;
 
 function TAccClrBtn.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -2366,8 +2376,19 @@ end;
 
 function TTransCheckBox.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    pvarChild := 0;
-    Result := S_OK;
+    result := S_OK;
+  VariantInit(pvarChild);
+  if self.Focused then
+  begin
+    TVarData(pvarChild).VType := VT_I4;
+    TVarData(pvarChild).VInteger := CHILDID_SELF;
+  end
+  else
+  begin
+
+    TVarData(pvarChild).VType := VT_EMPTY;
+
+  end;
 end;
 
 function TTransCheckBox.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -2822,7 +2843,19 @@ end;
 
 function TAccMemo.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    Result := S_OK;
+    result := S_OK;
+  VariantInit(pvarChild);
+  if self.Focused then
+  begin
+    TVarData(pvarChild).VType := VT_I4;
+    TVarData(pvarChild).VInteger := CHILDID_SELF;
+  end
+  else
+  begin
+
+    TVarData(pvarChild).VType := VT_EMPTY;
+
+  end;
 end;
 
 function TAccMemo.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -4182,13 +4215,15 @@ end;
 
 function TAccButton.accDoDefaultAction(varChild: OleVariant): HResult;
 begin
+  Result := DISP_E_MEMBERNOTFOUND;
+  exit;
     if varChild = CHILDID_SELF then
     begin
         result := S_OK;
         Click;
     end
     else
-        Result := S_OK;
+        Result := E_INVALIDARG;
 end;
 
 function TAccButton.accHitTest(xLeft: Integer; yTop: Integer; out pvarChild: OleVariant): HResult;
@@ -4197,6 +4232,8 @@ var
   Control: TControl;
   i: integer;
 begin
+  Result := DISP_E_MEMBERNOTFOUND;
+  exit;
     VariantInit(pvarChild);
     TVarData(pvarChild).VType := VT_I4;
     pvarChild := 0;
@@ -4205,20 +4242,19 @@ begin
     Control := ControlAtPos(Pt, True);
     if Assigned(Control) then
     begin
-        for i := 0 to ControlCount - 1 do
-        begin
-            if Controls[i] = control then
-            begin
-                pvarChild := i + 1;
-                result := S_OK;
-                break;
-            end;
-        end;
+      if Control = Self then
+      begin
+        pvarChild := CHILDID_SELF;
+        Result := S_OK;
+      end
+      else
+        TVarData(pvarChild).VType := VT_EMPTY;
+        Result := E_INVALIDARG;
     end
     else
     begin
-        pvarChild := CHILDID_SELF;
-        Result := S_OK;
+        TVarData(pvarChild).VType := VT_EMPTY;
+        Result := E_INVALIDARG;
     end;
 end;
 
@@ -4228,6 +4264,8 @@ function TAccButton.accLocation(out pxLeft: Integer;
 var
     p: tpoint;
 begin
+  Result := DISP_E_MEMBERNOTFOUND;
+  exit;
     if varChild = CHILDID_SELF then
     begin
         p := ClientToScreen(ClientRect.TopLeft);
@@ -4248,6 +4286,8 @@ function TAccButton.accNavigate(navDir: Integer; varStart: OleVariant;
 var
     iDis: IDISPATCH;
 begin
+  Result := DISP_E_MEMBERNOTFOUND;
+  exit;
     VariantInit(pvarEndUpAt);
     iDIs := nil;
     pvarEndUpAt := unassigned;
@@ -4339,6 +4379,8 @@ end;
 
 function TAccButton.Get_accSelection(out pvarChildren: OleVariant): HResult;
 begin
+  Result := DISP_E_MEMBERNOTFOUND;
+  exit;
     pvarChildren := 0;
     Result := S_OK;
 end;
@@ -4370,6 +4412,7 @@ end;
 
 function TAccButton.Get_accChild(varChild: OleVariant; out ppdispChild: IDispatch): HResult;
 begin
+
     if varChild = CHILDID_SELF then
     begin
         Result := S_OK;
@@ -4378,46 +4421,72 @@ begin
     else
     begin
         ppdispChild := nil;
-        result := S_OK;//FAcc.Get_accChild(varChild, ppdispChild);
+        result := E_INVALIDARG;//FAcc.Get_accChild(varChild, ppdispChild);
     end;
 end;
 
 function TAccButton.Get_accChildCount(out pcountChildren: Integer): HResult;
 begin
+
     pcountChildren := 0;
     Result := S_OK;
 end;
 
 function TAccButton.Get_accDefaultAction(varChild: OleVariant; out pszDefaultAction: widestring): HResult;
 begin
+
+  if varChild =CHILDID_SELF then
+  begin
     Result := S_OK;
     pszDefaultAction := FacDesc;
     //Result := FAcc.Get_accDefaultAction(varChild, pszDefaultAction);
+  end
+  else
+    Result := E_INVALIDARG;
 end;
 
 function TAccButton.Get_accDescription(varChild: OleVariant; out pszDescription: widestring): HResult;
 begin
+
   if varChild = CHILDID_SELF then
   begin
     pszDescription := FDesc;
+    Result := S_OK;
   end
   else
+  begin
     pszDescription := '';
-    Result := S_OK;
+    Result := E_INVALIDARG;
+  end;
+
 end;
 
 function TAccButton.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    VariantInit(pvarChild);
-    TVarData(pvarChild).VType := VT_DISPATCH;
-    pvarChild := self as iDispatch;
-    result := S_OK;
+  result := S_OK;
+  VariantInit(pvarChild);
+  if self.Focused then
+  begin
+    TVarData(pvarChild).VType := VT_I4;
+    TVarData(pvarChild).VInteger := CHILDID_SELF;
+  end
+  else
+  begin
+
+    TVarData(pvarChild).VType := VT_EMPTY;
+
+  end;
 end;
 
 function TAccButton.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
 begin
+  if varChild = CHILDID_SELF then
+  begin
     pszHelp := GetLongHInt(Hint);
     Result := S_OK;//FAcc.Get_accHelp(varChild, pszHelp);
+  end
+  else
+    Result := E_INVALIDARG;
 end;
 
 function TAccButton.Get_accHelpTopic(out pszHelpFile: widestring; varChild: OleVariant;
@@ -4431,17 +4500,20 @@ begin
     end
     else
     begin
-        pszHelpFile := '';
-        pidTopic := 0;
-        result := S_OK;
+        result := E_INVALIDARG;
     end;
 end;
 
 
 function TAccButton.Get_accKeyboardShortcut(varChild: OleVariant; out pszKeyboardShortcut: widestring): HResult;
 begin
+  if varChild = CHILDID_SELF then
+  begin
     pszKeyboardShortcut := FShortCut;
     Result := S_OK;//FAcc.Get_accKeyboardShortcut(varChild, pszKeyboardShortcut);
+  end
+  else
+    Result := E_INVALIDARG;
 end;
 
 function TAccButton.Get_accName(varChild: OleVariant; out pszName: widestring): HResult;
@@ -4456,7 +4528,7 @@ begin
     else
     begin
         pszName := '';
-        Result := S_OK;
+        Result := E_INVALIDARG;
     end;
 end;
 
@@ -4480,6 +4552,7 @@ end;
 
 function TAccButton.Get_accRole(varChild: OleVariant; out pvarRole: OleVariant): HResult;
 begin
+    result := S_OK;
     VariantInit(pvarRole);
     TVarData(pvarRole).VType := VT_I4;
     if varChild = CHILDID_SELF then
@@ -4487,17 +4560,13 @@ begin
         TVarData(pvarRole).VInteger := ROLE_SYSTEM_PUSHBUTTON;
     end
     else
-        TVarData(pvarRole).VInteger := ROLE_SYSTEM_WINDOW;
-   result := S_OK;
+        Result := E_INVALIDARG;
+
 end;
 
 function TAccButton.accSelect(flagsSelect: Integer; varChild: OleVariant): HResult;
 begin
-    if varChild = CHILDID_SELF then
-    begin
-        self.SetFocus;
-    end;
-    Result := S_OK;
+    Result := DISP_E_MEMBERNOTFOUND;
 end;
 
 
@@ -4524,7 +4593,7 @@ begin
         Result := S_OK;//DISP_E_MEMBERNOTFOUND;//FAcc.Get_accState(varChild, pvarState);
     end
      else
-        Result := S_OK;
+        Result := E_INVALIDARG;
 end;
 
 function TAccButton.Get_accValue(varChild: OleVariant; out pszValue: widestring): HResult;
@@ -4535,7 +4604,7 @@ begin
         result := S_OK;
     end
     else
-        Result :=  S_OK;//FAcc.Get_accValue(varChild, pszValue);
+        Result :=  E_INVALIDARG;//FAcc.Get_accValue(varChild, pszValue);
 end;
 
 function TAccButton.Invoke(DispID: Integer; const IID: TGUID;
@@ -4553,7 +4622,7 @@ begin
         Caption := pszName;
     end
     else
-        Result := S_OK;
+        Result := E_INVALIDARG;
 end;
 
 function TAccButton.Set_accValue(varChild: OleVariant; const pszValue: widestring): HResult;
@@ -4564,7 +4633,7 @@ begin
         Caption := pszValue;
     end
     else
-        Result := S_OK;
+        Result := E_INVALIDARG;
 end;
 
 
@@ -4877,8 +4946,19 @@ end;
 
 function TAccComboBox.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    pvarChild := 0;
-    Result := S_OK;
+    result := S_OK;
+  VariantInit(pvarChild);
+  if self.Focused then
+  begin
+    TVarData(pvarChild).VType := VT_I4;
+    TVarData(pvarChild).VInteger := CHILDID_SELF;
+  end
+  else
+  begin
+
+    TVarData(pvarChild).VType := VT_EMPTY;
+
+  end;
 end;
 
 function TAccComboBox.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -5331,10 +5411,19 @@ end;
 
 function TAccBitBtn.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    VariantInit(pvarChild);
-    TVarData(pvarChild).VType := VT_DISPATCH;
-    pvarChild := self as iDispatch;
     result := S_OK;
+  VariantInit(pvarChild);
+  if self.Focused then
+  begin
+    TVarData(pvarChild).VType := VT_I4;
+    TVarData(pvarChild).VInteger := CHILDID_SELF;
+  end
+  else
+  begin
+
+    TVarData(pvarChild).VType := VT_EMPTY;
+
+  end;
 end;
 
 function TAccBitBtn.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -5797,8 +5886,19 @@ end;
 
 function TAccRadioButton.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    pvarChild := 0;
-    Result := S_OK;
+    result := S_OK;
+  VariantInit(pvarChild);
+  if self.Focused then
+  begin
+    TVarData(pvarChild).VType := VT_I4;
+    TVarData(pvarChild).VInteger := CHILDID_SELF;
+  end
+  else
+  begin
+
+    TVarData(pvarChild).VType := VT_EMPTY;
+
+  end;
 end;
 
 function TAccRadioButton.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -6251,7 +6351,19 @@ end;
 
 function TAccEdit.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    Result := S_OK;//FAcc.Get_accFocus(pvarChild);
+    result := S_OK;
+  VariantInit(pvarChild);
+  if self.Focused then
+  begin
+    TVarData(pvarChild).VType := VT_I4;
+    TVarData(pvarChild).VInteger := CHILDID_SELF;
+  end
+  else
+  begin
+
+    TVarData(pvarChild).VType := VT_EMPTY;
+
+  end;
 end;
 
 function TAccEdit.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -6667,7 +6779,19 @@ end;
 
 function TAccLabeledEdit.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    Result := S_OK;//FAcc.Get_accFocus(pvarChild);
+    result := S_OK;
+  VariantInit(pvarChild);
+  if self.Focused then
+  begin
+    TVarData(pvarChild).VType := VT_I4;
+    TVarData(pvarChild).VInteger := CHILDID_SELF;
+  end
+  else
+  begin
+
+    TVarData(pvarChild).VType := VT_EMPTY;
+
+  end;
 end;
 
 function TAccLabeledEdit.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -7108,8 +7232,19 @@ end;
 
 function TAccTrackbar.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    pvarChild := 0;
-    Result := S_OK;
+    result := S_OK;
+  VariantInit(pvarChild);
+  if self.Focused then
+  begin
+    TVarData(pvarChild).VType := VT_I4;
+    TVarData(pvarChild).VInteger := CHILDID_SELF;
+  end
+  else
+  begin
+
+    TVarData(pvarChild).VType := VT_EMPTY;
+
+  end;
 end;
 
 function TAccTrackbar.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -7561,7 +7696,19 @@ end;
 
 function TAccMaskEdit.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    Result := S_OK;//FAcc.Get_accFocus(pvarChild);
+    result := S_OK;
+  VariantInit(pvarChild);
+  if self.Focused then
+  begin
+    TVarData(pvarChild).VType := VT_I4;
+    TVarData(pvarChild).VInteger := CHILDID_SELF;
+  end
+  else
+  begin
+
+    TVarData(pvarChild).VType := VT_EMPTY;
+
+  end;
 end;
 
 function TAccMaskEdit.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -8213,8 +8360,7 @@ end;
 
 function TAccTreeView.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    pvarChild := 0;
-    Result := S_OK;
+    Result := DISP_E_MEMBERNOTFOUND;
 end;
 
 function TAccTreeView.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -8451,13 +8597,11 @@ begin
     end
     else
     begin
-        if GetAccNode(VarChild) then
-        begin
-            if (AccNode.Index) <= (Items.Count - 1) then
-                pszValue := IntToStr(AccNode.Level); //AccNode.Text;
-            Result :=  S_OK;//FAcc.Get_accValue(varChild, pszValue);
-        end;
-
+    	if VarChild <= items.count then
+      begin
+      	pszValue := Items[varChild].Text;
+        Result :=  S_OK;
+      end;
     end;
     except
         on E: Exception do
@@ -8939,8 +9083,7 @@ end;
 
 function TAccCheckList.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    pvarChild := 0;
-    Result := S_OK;
+    Result := DISP_E_MEMBERNOTFOUND;
 end;
 
 function TAccCheckList.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -9115,7 +9258,7 @@ begin
     begin
         if (VarChild - 1) <= (Items.Count - 1) then
             pszValue := Items[varChild - 1];
-        Result :=  S_OK;//FAcc.Get_accValue(varChild, pszValue);
+        Result :=  S_OK;
     end;
 end;
 
@@ -9155,106 +9298,6 @@ begin
         Result := S_OK;
     end;
 end;
-
-{procedure TAccCheckList.CNDrawItem(var Msg: TWMDrawItem);
-var
-  XCanvas: TCanvas;
-  XCaptionRect, XGlyphRect: TRect;
-  cRes: cardinal;
-  procedure xxDrawBitMap(ACanvas: TCanvas);
-  const
-    xx_h = 13;
-    xx_w = 13;
-  var
-    xxGlyph: TBitmap;
-    xxX, xxY, xxStepY, xxStepX: integer;
-  begin
-    xxGlyph := TBitmap.Create;
-    try
-      xxGlyph.Handle := LoadBitmap(0, PChar(OBM_CHECKBOXES));
-      xxY := XGlyphRect.Top +
-        (XGlyphRect.Bottom - XGlyphRect.Top - xx_h) div 2;
-      xxX := 2;
-      xxStepX := 0;
-      xxStepY := 0;
-      case State of
-        cbChecked: xxStepX := xxStepX + xx_w;
-        cbGrayed:  xxStepX := xxStepX + xx_w * 3;
-        end;
-      ACanvas.CopyRect(
-        Rect(xxX, xxY, xxX + xx_w,  xxY + xx_h),
-        xxGlyph.Canvas,
-        Rect(xxStepX, xxStepY, xx_w + xxStepX, xx_h + xxStepY)
-      );
-    finally
-      xxGlyph.Free;
-    end;
-  end;
-
-  procedure xxDrawCaption;
-  var
-    xXFormat: longint;
-  begin
-
-    xXFormat := DT_VCENTER + DT_SINGLELINE + DT_LEFT;
-    xXFormat := DrawTextBiDiModeFlags(xXFormat);
-    DrawTextW(
-      Msg.DrawItemStruct.hDC,
-      PWideChar(Caption),
-      Length(Caption),
-      XCaptionRect,
-      xXFormat
-    );
-  end;
-
-begin
-  XGlyphRect := Msg.DrawItemStruct.rcItem;
-  XGlyphRect.Right := 20;
-  XCaptionRect := Msg.DrawItemStruct.rcItem;
-  XCaptionRect.Left := XGlyphRect.Right;
-  XCanvas := TCanvas.Create;
-  try
-    DrawW := Msg.DrawItemStruct.rcItem.Right;
-    DrawH := Msg.DrawItemStruct.rcItem.Bottom;
-    if (Msg.DrawItemStruct.itemState and ODS_FOCUS) <> 0 then
-    begin
-        DrawFocusRect(Msg.DrawItemStruct.hDC, Msg.DrawItemStruct.rcItem);
-        Frect := True;
-    end
-    else
-    begin
-        if FRect then
-        begin
-
-            DrawFocusRect(Msg.DrawItemStruct.hDC, Msg.DrawItemStruct.rcItem);
-        end;
-        FRect := false;
-    end;
-    XCanvas.Handle := Msg.DrawItemStruct.hDC;
-    XCanvas.Brush.Style := bsClear;
-    xxDrawBitMap(XCanvas);
-    cRes := SelectObject(Msg.DrawItemStruct.hDC, Font.Handle);
-    xxDrawCaption;
-    SelectObject(Msg.DrawItemStruct.hDC, cRes);
-
-  finally
-    XCanvas.Free;
-  end;
-end;   }
-
-{procedure TAccCheckList.CreateParams(var Params: TCreateParams);
-begin
-  inherited CreateParams(Params);
-  FRect := false;
-  Params.ExStyle := Params.ExStyle or WS_EX_Transparent;
-
-end;
-
-procedure TAccCheckList.CreateWnd;
-begin
-  inherited CreateWnd;
-  SetButtonStyle;
-end;}
 
 
 
@@ -9596,8 +9639,7 @@ end;
 
 function TColorDrop.Get_accFocus(out pvarChild: OleVariant): HResult;
 begin
-    pvarChild := 0;
-    Result := S_OK;
+    Result := DISP_E_MEMBERNOTFOUND;
 end;
 
 function TColorDrop.Get_accHelp(varChild: OleVariant; out pszHelp: widestring): HResult;
@@ -10019,6 +10061,11 @@ begin
   Result := Trunc(SimpleRoundTo(d));
 end;
 
+procedure TJColorPickFrm2.AppDeactivate(Sender: TObject);
+begin
+	JColorPickFrm2.Close;
+end;
+
 procedure TJColorPickFrm2.FormCreate(Sender: TObject);
 var
     i: Integer;
@@ -10027,6 +10074,7 @@ var
 const
   ColorPerArray: array [0..9] of Single = (1.0, 0.75, 0.50, 0.25, 0.10, 0.85, 0.75, 0.50, 0.25, 0.10);
 begin
+	Application.OnDeactivate := AppDeactivate;
     FDlgOpen := False;
     Color := clBlack;
     clientWidth := 176;
